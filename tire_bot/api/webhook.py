@@ -32,6 +32,22 @@ line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(LINE_CHANNEL_SECRET)
 
 user_pages = {}
+@app.route("/", methods=["POST"])
+def callback():
+    body = request.get_data(as_text=True)
+    signature = request.headers.get("X-Line-Signature")
+    if not signature:
+        return "Missing signature", 400
+    try:
+        handler.handle(body, signature)
+    except InvalidSignatureError:
+        return "Invalid signature", 401
+    except Exception as e:
+        print("Error:", e)
+        return "Error", 500
+    return "OK", 200
+
+
 @app.route("/", methods=["GET"])
 def home():
     return "LINE Bot Webhook is running!", 200
@@ -247,25 +263,8 @@ def send_tires_page(reply_token, user_id):
         TextSendMessage(text="👇 เมนูเพิ่มเติม", quick_reply=build_quick_reply_buttons(nav_buttons))
     ])
 
-@app.route("/api/webhook", methods=["POST"])
-def callback():
-    body = request.get_data(as_text=True)
-    signature = request.headers.get("X-Line-Signature")
-    if not signature:
-        abort(400)
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        print("❌ Invalid signature!")
-        return "Invalid signature", 401
-    except Exception as e:
-        print("General exception:", e)
-        abort(500)
-    return "OK"
 
-@app.route("/api/webhook", methods=["GET"])
-def index():
-    return "LINE Webhook is working!", 200
+
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
